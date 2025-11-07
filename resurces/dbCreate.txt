@@ -1,3 +1,5 @@
+CREATE DATABASE personal_finance_tracker
+
 CREATE SCHEMA finance_storage;
 
 CREATE TABLE transaction_type(
