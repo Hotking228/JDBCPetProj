@@ -1,10 +1,10 @@
 package dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public record Budget(Long id,
-                     Long category_id,
-                     BigDecimal amount,
-                     int month,
-                     int year) {
+                     Double amount,
+                     LocalDateTime startDate,
+                     LocalDateTime endDate) {
 }

@@ -1,8 +1,10 @@
 package threads;
 
 import connectionPool.ConnectionManager;
+import dao.BudgetDao;
 import dao.CategoryDao;
 import dao.TransactionDao;
+import dto.Budget;
 import dto.Category;
 import dto.Transaction;
 import utils.PropertiesUtil;
@@ -25,13 +27,18 @@ public class ReportGenerator {
     static void main() throws IOException {
         Map<String, String> commands = new HashMap<>();
         commands.put("add", "Добавление новой транзакции");
-        commands.put("all", "Показ всех транзакций");
+        commands.put("all", "Показать все транзакции");
         commands.put("all period", "показ всех транзакций за период");
-        commands.put("period", "Показ суммы доходов/расходов за период");
-        commands.put("top", "Показ топ 5 больших трат за период");
-        commands.put("total", "Показ общей суммы доходов и расходов за период");
-        commands.put("delete", "удаление транзакции по индексу");
-        commands.put("cat", "показ всех категорий транзакций");
+        commands.put("period", "Показать сумму доходов/расходов за период");
+        commands.put("top", "Показать топ 5 наибольших трат за период");
+        commands.put("total", "Показать общую сумму доходов и расходов за период");
+        commands.put("delete", "Удаление транзакции по индексу");
+        commands.put("cat", "Показать все категории транзакций");
+        commands.put("ab", "Показать все бюджеты");
+        commands.put("create budget", "Создать бюдже на срок");
+        commands.put("gab", "Показать бюджеты, активные на дату");
+        commands.put("help", "Показать команды");
+        commands.put("exit", "Закончить выполнение программы");
         ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(PropertiesUtil.get(THREAD_POOL_SIZE_KEY)));
         try(BufferedReader inputStream = new BufferedReader(new InputStreamReader(System.in))){
             System.out.println("=========== Personal finance tracker ===========");
@@ -56,7 +63,7 @@ public class ReportGenerator {
                         threadPool.submit(() -> add(amount, type,  name, dateTime, description));
                         break;
                     case("all"):
-                        threadPool.submit(() ->  all());
+                        threadPool.submit(ReportGenerator::all);
                         break;
                     case("period"):
                         System.out.print("type : "); String pType = inputStream.readLine();
@@ -85,7 +92,7 @@ public class ReportGenerator {
                         threadPool.submit(() -> delete(delIdx));
                         break;
                     case("cat"):
-                        threadPool.submit(() -> cat());
+                        threadPool.submit(ReportGenerator::cat);
                         break;
                     case("all period"):
                         System.out.print("from date(yyyy-MM-ddTHH:mm:SS) : "); fDate = LocalDateTime.parse(inputStream.readLine().trim());
@@ -93,6 +100,25 @@ public class ReportGenerator {
                         LocalDateTime finalFDate3 = fDate;
                         LocalDateTime finalTDate3 = tDate;
                         threadPool.submit(() -> allPeriod(finalFDate3, finalTDate3));
+                        break;
+                    case("ab"):
+                        threadPool.submit(ReportGenerator::ab);
+                        break;
+                    case("create budget"):
+                        System.out.print("amount : "); amount = Double.parseDouble(inputStream.readLine());
+                        System.out.print("from date(yyyy-MM-ddTHH:mm:SS) : "); fDate = LocalDateTime.parse(inputStream.readLine().trim());
+                        System.out.print("to date(yyyy-MM-ddTHH:mm:SS) : "); tDate = LocalDateTime.parse(inputStream.readLine().trim());
+                        Budget budget = new Budget(-1L, amount, fDate, tDate);
+                        threadPool.submit(() -> createBudget(budget));
+                        break;
+                    case("gab"):
+                        System.out.print("from date(yyyy-MM-ddTHH:mm:SS) : "); LocalDateTime curDate = LocalDateTime.parse(inputStream.readLine().trim());
+                        threadPool.submit(() -> gab(curDate));
+                        break;
+                    case("help"):
+                        for (var command : commands.entrySet()) {
+                            System.out.println(command.getKey() + " : " + command.getValue());
+                        }
                         break;
                 }
             }
@@ -106,6 +132,23 @@ public class ReportGenerator {
         }
 
         ConnectionManager.closeConnections();
+    }
+
+    private static void gab(LocalDateTime dateTime){
+        BudgetDao.getInstance().findActiveBudget(dateTime).entrySet().forEach(entry -> {
+            System.out.print("money left = " + entry.getValue() + " ");
+            ReflectionHelper.printObjectFields(entry.getKey());
+        });
+    }
+
+    private static void createBudget(Budget budget){
+
+        BudgetDao.getInstance().createBudget(budget);
+    }
+
+    private static void ab(){
+
+        BudgetDao.getInstance().findAll().forEach(ReflectionHelper::printObjectFields);
     }
 
     private static void add(Double amount, String type,  String name, LocalDateTime date, String description){

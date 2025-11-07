@@ -184,14 +184,42 @@ FROM finance_storage.transactions t
 JOIN finance_storage.categories c
     ON c.id = t.category_id
 JOIN finance_storage.transaction_type t_t ON t_t.id = c.type_id
-WHERE t.date BETWEEN '2020-01-01T00:00:00' AND '2026-01-01T00:00:00']]></console>
+WHERE t.date BETWEEN '2020-01-01T00:00:00' AND '2026-01-01T00:00:00'
+
+CREATE TABLE budgets(
+    id SERIAL PRIMARY KEY,
+    amount REAL,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP
+);
+
+DROP TABLE budgets;
+
+
+SELECT 
+    id,
+    amount,
+    end_date,
+    start_date,
+    amount - COALESCE((SELECT SUM(amount) FROM finance_storage.transactions t 
+JOIN finance_storage.categories c 
+    ON c.id = t.category_id
+JOIN finance_storage.transaction_type t_t
+    ON c.type_id = t_t.id
+WHERE t_t.type = 'Списание' AND t.date BETWEEN start_date AND end_date
+), 0)money_left
+FROM finance_storage.budgets
+WHERE '2020-01-01' BETWEEN start_date AND end_date]]></console>
     </connection>
   </component>
   <component name="DBNavigator.Project.DatabaseEditorStateManager">
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files />
+    <open-files>
+      <object connection-id="8806f060-49f5-451e-a4cc-dbb6b0f1524e" object-ref="consoles/Connection 1" />
+      <object connection-id="8806f060-49f5-451e-a4cc-dbb6b0f1524e" object-ref="schemas/finance_storage/tables/budgets" />
+    </open-files>
   </component>
   <component name="DBNavigator.Project.DatabaseSessionManager">
     <connection id="8faf49e0-1eb0-49e7-9626-94ab40c67d58" />
