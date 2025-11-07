@@ -22,8 +22,6 @@ CREATE TABLE categories(
 ALTER TABLE categories
 ADD UNIQUE (name_id, type_id);
 
-DROP TABLE categories;
-
 
 CREATE TABLE transactions(
     id SERIAL PRIMARY KEY,
@@ -35,8 +33,6 @@ CREATE TABLE transactions(
     FOREIGN KEY (category_id) REFERENCES categories (id)
 );
 
-DROP TABLE transactions;
-
 CREATE TABLE budgets(
     id SERIAL PRIMARY KEY,
     category_id INT,
@@ -46,17 +42,6 @@ CREATE TABLE budgets(
 
     FOREIGN KEY (category_id) REFERENCES categories(id)
 );
-
-DROP TABLE budgets;
-
-SELECT c.id,
-    t_n.name,
-    t_t.type
-FROM finance_storage.categories c
-    JOIN finance_storage.transaction_name t_n
-    ON t_n.id = c.name_id
-    JOIN finance_storage.transaction_type t_t
-    ON t_t.id = c.type_id
 
 INSERT INTO finance_storage.transaction_name (name)
 VALUES
@@ -112,42 +97,10 @@ VALUES
     ((SELECT id FROM transaction_name WHERE name = 'Перевод'), (SELECT id FROM transaction_type WHERE type = 'Зачисление')),
     ((SELECT id FROM transaction_name WHERE name = 'Стипендия'), (SELECT id FROM transaction_type WHERE type = 'Зачисление'));
 
-SELECT SUM(t.amount) s,
-       (SELECT name FROM finance_storage.transaction_name t_n WHERE c.name_id = t_n.id)
-FROM finance_storage.transactions t
-JOIN finance_storage.categories c
-    ON c.id = t.category_id
-WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Списание')
-GROUP BY c.name_id
-ORDER BY s DESC
-LIMIT 5
 
-SELECT SUM(t.amount)
-FROM finance_storage.transactions t
-JOIN finance_storage.categories c
-    ON c.id = t.category_id
-WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Зачисление')
-    AND t.date BETWEEN '2020-01-01' AND '2023-01-01'
-GROUP BY c.type_id
-
-SELECT SUM(t.amount) s
-FROM finance_storage.transactions t
-WHERE t.date BETWEEN now() - INTERVAL '1 month' AND now()
-
-SELECT SUM(t.amount)
-FROM finance_storage.transactions t
-JOIN finance_storage.categories c
-    ON c.id = t.category_id
-WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Списание')
-    AND t.date BETWEEN '2024-01-01T00:00:00' AND '2026-01-01T00:00:00'
-GROUP BY c.type_id
-
-SELECT SUM(CASE
-            WHEN t_t.type = 'Списание' THEN -t.amount
-            WHEN t_t.type = 'Зачисление' THEN t.amount
-           END)
-FROM finance_storage.transactions t
-JOIN finance_storage.categories c
-    ON c.id = t.category_id
-JOIN finance_storage.transaction_type t_t ON t_t.id = c.type_id
-WHERE t.date BETWEEN '2020-01-01T00:00:00' AND '2026-01-01T00:00:00'
+CREATE TABLE budgets(
+    id SERIAL PRIMARY KEY,
+    amount REAL,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP
+);
