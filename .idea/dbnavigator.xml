@@ -191,12 +191,7 @@ WHERE t.date BETWEEN '2020-01-01T00:00:00' AND '2026-01-01T00:00:00']]></console
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files>
-      <object connection-id="8806f060-49f5-451e-a4cc-dbb6b0f1524e" object-ref="consoles/Connection 1" />
-      <object connection-id="8806f060-49f5-451e-a4cc-dbb6b0f1524e" object-ref="schemas/finance_storage/tables/categories" />
-      <object connection-id="8806f060-49f5-451e-a4cc-dbb6b0f1524e" object-ref="schemas/finance_storage/tables/transaction_name" />
-      <object connection-id="8806f060-49f5-451e-a4cc-dbb6b0f1524e" object-ref="schemas/finance_storage/tables/transactions" />
-    </open-files>
+    <open-files />
   </component>
   <component name="DBNavigator.Project.DatabaseSessionManager">
     <connection id="8faf49e0-1eb0-49e7-9626-94ab40c67d58" />

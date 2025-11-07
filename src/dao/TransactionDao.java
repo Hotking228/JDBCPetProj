@@ -3,6 +3,7 @@ package dao;
 import connectionPool.ConnectionManager;
 import dto.Transaction;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -32,6 +33,18 @@ public class TransactionDao {
                 date,
                 description
                 FROM finance_storage.transactions t
+            """;
+    private static final String SELECT_ALL_PERIOD_SQL = """
+            SELECT 
+                id,
+                amount,
+                --(SELECT name FROM finance_storage.transaction_name t_n JOIN finance_storage.categories c ON name_id = t_n.id WHERE t.category_id = c.id) name,
+                --(SELECT type FROM finance_storage.transaction_type t_t JOIN finance_storage.categories c ON type_id = t_t.id WHERE t.category_id = c.id) type,
+                category_id,
+                date,
+                description
+                FROM finance_storage.transactions t
+                WHERE t.date BETWEEN ? AND ?
             """;
     private static final String SELECT_SUM_PERIOD = """
             SELECT SUM(t.amount)
@@ -79,8 +92,8 @@ public class TransactionDao {
     }
 
     public Long addTransaction(Transaction transaction){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)){
             statement.setDouble(1, transaction.amount());
             statement.setLong(2, transaction.category_id());
             statement.setTimestamp(3, Timestamp.from(transaction.date().toInstant(ZoneOffset.ofHours(0))));
@@ -93,12 +106,14 @@ public class TransactionDao {
             return -1L;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public Float getSumPeriod(LocalDateTime from, LocalDateTime to, String type){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_SUM_PERIOD)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_SUM_PERIOD)){
             List<Transaction> list = new ArrayList<>();
             statement.setString(1, type);
             statement.setTimestamp(2, Timestamp.from(from.toInstant(ZoneOffset.ofHours(0))));
@@ -112,12 +127,14 @@ public class TransactionDao {
             return -1.0f;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public Map<String, Float> getTopExpenses(LocalDateTime from, LocalDateTime to){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_TOP_EXPENSES)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_TOP_EXPENSES)){
             List<Transaction> list = new ArrayList<>();
             statement.setTimestamp(1, Timestamp.from(from.toInstant(ZoneOffset.ofHours(0))));
             statement.setTimestamp(2, Timestamp.from(to.toInstant(ZoneOffset.ofHours(0))));
@@ -130,12 +147,14 @@ public class TransactionDao {
             return map;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public Float getMonthTotal(LocalDateTime from, LocalDateTime to){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_MONTH_TOTAL)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_MONTH_TOTAL)){
             List<Transaction> list = new ArrayList<>();
             statement.setTimestamp(1, Timestamp.from(from.toInstant(ZoneOffset.ofHours(0))));
             statement.setTimestamp(2, Timestamp.from(to.toInstant(ZoneOffset.ofHours(0))));
@@ -147,13 +166,38 @@ public class TransactionDao {
             return -1.0f;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public List<Transaction> getAllTransactions(){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_ALL_SQL)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_ALL_SQL)){
             List<Transaction> list = new ArrayList<>();
+            var resultSet = statement.executeQuery();
+            while(resultSet.next()){
+                Transaction transaction = new Transaction(resultSet.getLong("id"),
+                        resultSet.getDouble("amount"),
+                        resultSet.getLong("category_id"),
+                        ZonedDateTime.ofInstant(resultSet.getTimestamp("date").toInstant(), ZoneId.of("Europe/Paris")).toLocalDateTime(),
+                        resultSet.getString("description"));
+                list.add(transaction);
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            ConnectionManager.returnConnection(connection);
+        }
+    }
+
+    public List<Transaction> getAllTransactionsPeriod(LocalDateTime from, LocalDateTime to){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_ALL_PERIOD_SQL)){
+            List<Transaction> list = new ArrayList<>();
+            statement.setTimestamp(1, Timestamp.from(from.toInstant(ZoneOffset.ofHours(0))));
+            statement.setTimestamp(2, Timestamp.from(to.toInstant(ZoneOffset.ofHours(0))));
             var resultSet = statement.executeQuery();
             while(resultSet.next()){
                 Transaction transaction = new Transaction(resultSet.getLong("id"),
@@ -167,16 +211,20 @@ public class TransactionDao {
             return list;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public boolean deleteTransaction(Long id){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(DELETE_SQL, Statement.RETURN_GENERATED_KEYS)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(DELETE_SQL, Statement.RETURN_GENERATED_KEYS)){
             statement.setLong(1, id);
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        } finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 }

@@ -64,8 +64,8 @@ public class CategoryDao {
     }
 
     public List<Category> getAllCategories(){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_ALL_SQL)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_ALL_SQL)){
             var resultSet = statement.executeQuery();
             List<Category> list = new ArrayList<>();
             while(resultSet.next()){
@@ -79,12 +79,14 @@ public class CategoryDao {
             return list;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        } finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public List<Category> findCategoryByName(String name){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_CATEGORY_BY_NAME_SQL)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_CATEGORY_BY_NAME_SQL)){
             statement.setString(1, name);
             var resultSet = statement.executeQuery();
             List<Category> list = new ArrayList<>();
@@ -99,12 +101,14 @@ public class CategoryDao {
             return list;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public List<Category> findCategoryByType(String type){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_CATEGORY_BY_TYPE_SQL)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_CATEGORY_BY_TYPE_SQL)){
             statement.setString(1, type);
             var resultSet = statement.executeQuery();
             List<Category> list = new ArrayList<>();
@@ -119,12 +123,14 @@ public class CategoryDao {
             return list;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        } finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 
     public List<Category> findCategoryByTypeName(String type, String name){
-        try(var connection = ConnectionManager.get();
-            var statement = connection.prepareStatement(SELECT_CATEGORY_BY_TYPE_NAME_SQL)){
+        var connection = ConnectionManager.get();
+        try(var statement = connection.prepareStatement(SELECT_CATEGORY_BY_TYPE_NAME_SQL)){
             statement.setString(1, type);
             statement.setString(2, name);
             var resultSet = statement.executeQuery();
@@ -140,6 +146,8 @@ public class CategoryDao {
             return list;
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        } finally {
+            ConnectionManager.returnConnection(connection);
         }
     }
 }

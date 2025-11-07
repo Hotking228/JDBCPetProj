@@ -15,8 +15,9 @@ public class ReflectionHelper {
                 throw new RuntimeException(e);
             }
 
-            System.out.println(field.getClass().getName() + " = " + value);
+            System.out.print(field.getName() + " = " + value + " ");
             field.setAccessible(false);
         }
+        System.out.println();
     }
 }

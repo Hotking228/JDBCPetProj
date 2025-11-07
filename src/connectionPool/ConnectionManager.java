@@ -17,11 +17,14 @@ public class ConnectionManager {
     private static final String DB_PASSWORD_KEY = "db.password";
     private static final String DB_URL_KEY = "db.url";
     private static final String DB_CONNECTION_POOL_SIZE_KEY = "db.pool.size";
-    private static final List<Connection> list = new ArrayList<>();
     private static BlockingQueue<Connection> pool;
 
     static{
         init();
+    }
+
+    public static void returnConnection(Connection connection){
+        pool.add(connection);
     }
 
     private static void init(){
@@ -29,17 +32,14 @@ public class ConnectionManager {
         pool = new ArrayBlockingQueue<>(size);
         for (int i = 0; i < size; i++) {
             Connection connection = open();
-            var proxyConnection = (Connection) Proxy.newProxyInstance(ConnectionManager.class.getClassLoader(), new Class[]{Connection.class},
-                    (proxy, method, args) -> method.getName().equals("close") ? pool.add(connection) : method.invoke(connection,args));
-            pool.add(proxyConnection);
-            list.add(connection);
+            pool.add(connection);
         }
     }
 
     public static void closeConnections(){
-        for(int i = 0; i < list.size(); i++){
+        for (Connection connection : pool) {
             try {
-                list.get(i).close();
+                connection.close();
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
