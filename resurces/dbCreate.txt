@@ -1,0 +1,153 @@
+CREATE SCHEMA finance_storage;
+
+CREATE TABLE transaction_type(
+    id SERIAL PRIMARY KEY,
+    type TEXT
+);
+
+CREATE TABLE transaction_name(
+    id SERIAL PRIMARY KEY,
+    name TEXT
+);
+
+CREATE TABLE categories(
+    id SERIAL PRIMARY KEY,
+    name_id INT,
+    type_id INT,
+
+    FOREIGN KEY (name_id) REFERENCES transaction_name (id),
+    FOREIGN KEY (type_id) REFERENCES transaction_type (id)
+);
+
+ALTER TABLE categories
+ADD UNIQUE (name_id, type_id);
+
+DROP TABLE categories;
+
+
+CREATE TABLE transactions(
+    id SERIAL PRIMARY KEY,
+    amount REAL,
+    category_id INT,
+    date TIMESTAMP,
+    description TEXT,
+
+    FOREIGN KEY (category_id) REFERENCES categories (id)
+);
+
+DROP TABLE transactions;
+
+CREATE TABLE budgets(
+    id SERIAL PRIMARY KEY,
+    category_id INT,
+    amount DECIMAL(10,2),
+    month INT,
+    year INT,
+
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+DROP TABLE budgets;
+
+SELECT c.id,
+    t_n.name,
+    t_t.type
+FROM finance_storage.categories c
+    JOIN finance_storage.transaction_name t_n
+    ON t_n.id = c.name_id
+    JOIN finance_storage.transaction_type t_t
+    ON t_t.id = c.type_id
+
+INSERT INTO finance_storage.transaction_name (name)
+VALUES
+    ('Продукты'),
+    ('Кафе и рестораны'),
+    ('Транспорт'),
+    ('Бензин'),
+    ('Такси'),
+    ('Коммунальные платежи'),
+    ('Аренда жилья'),
+    ('Одежда и обувь'),
+    ('Развлечения'),
+    ('Кино'),
+    ('Здоровье'),
+    ('Аптека'),
+    ('Подарки'),
+    ('Образование'),
+    ('Курсы'),
+    ('Зарплата'),
+    ('Фриланс'),
+    ('Инвестиции'),
+    ('Премия'),
+    ('Стипендия'),
+    ('Перевод');
+
+INSERT INTO transaction_type (type)
+VALUES
+    ('Зачисление'),
+    ('Списание');
+
+INSERT INTO categories (name_id, type_id)
+VALUES
+    ((SELECT id FROM transaction_name WHERE name = 'Продукты'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Кафе и рестораны'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Транспорт'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Бензин'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Такси'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Коммунальные платежи'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Аренда жилья'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Одежда и обувь'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Развлечения'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Кино'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Здоровье'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Аптека'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Подарки'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Образование'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Курсы'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Зарплата'), (SELECT id FROM transaction_type WHERE type = 'Зачисление')),
+    ((SELECT id FROM transaction_name WHERE name = 'Фриланс'), (SELECT id FROM transaction_type WHERE type = 'Зачисление')),
+    ((SELECT id FROM transaction_name WHERE name = 'Инвестиции'), (SELECT id FROM transaction_type WHERE type = 'Зачисление')),
+    ((SELECT id FROM transaction_name WHERE name = 'Премия'), (SELECT id FROM transaction_type WHERE type = 'Зачисление')),
+    ((SELECT id FROM transaction_name WHERE name = 'Перевод'), (SELECT id FROM transaction_type WHERE type = 'Списание')),
+    ((SELECT id FROM transaction_name WHERE name = 'Перевод'), (SELECT id FROM transaction_type WHERE type = 'Зачисление')),
+    ((SELECT id FROM transaction_name WHERE name = 'Стипендия'), (SELECT id FROM transaction_type WHERE type = 'Зачисление'));
+
+SELECT SUM(t.amount) s,
+       (SELECT name FROM finance_storage.transaction_name t_n WHERE c.name_id = t_n.id)
+FROM finance_storage.transactions t
+JOIN finance_storage.categories c
+    ON c.id = t.category_id
+WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Списание')
+GROUP BY c.name_id
+ORDER BY s DESC
+LIMIT 5
+
+SELECT SUM(t.amount)
+FROM finance_storage.transactions t
+JOIN finance_storage.categories c
+    ON c.id = t.category_id
+WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Зачисление')
+    AND t.date BETWEEN '2020-01-01' AND '2023-01-01'
+GROUP BY c.type_id
+
+SELECT SUM(t.amount) s
+FROM finance_storage.transactions t
+WHERE t.date BETWEEN now() - INTERVAL '1 month' AND now()
+
+SELECT SUM(t.amount)
+FROM finance_storage.transactions t
+JOIN finance_storage.categories c
+    ON c.id = t.category_id
+WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Списание')
+    AND t.date BETWEEN '2024-01-01T00:00:00' AND '2026-01-01T00:00:00'
+GROUP BY c.type_id
+
+SELECT SUM(CASE
+            WHEN t_t.type = 'Списание' THEN -t.amount
+            WHEN t_t.type = 'Зачисление' THEN t.amount
+           END)
+FROM finance_storage.transactions t
+JOIN finance_storage.categories c
+    ON c.id = t.category_id
+JOIN finance_storage.transaction_type t_t ON t_t.id = c.type_id
+WHERE t.date BETWEEN '2020-01-01T00:00:00' AND '2026-01-01T00:00:00'
