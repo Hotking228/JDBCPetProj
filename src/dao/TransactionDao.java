@@ -1,0 +1,184 @@
+package dao;
+
+import connectionPool.ConnectionManager;
+import dto.Transaction;
+
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class TransactionDao {
+
+    private static final TransactionDao INSTANCE = new TransactionDao();
+    private static final String INSERT_SQL = """
+            INSERT INTO finance_storage.transactions (amount, category_id, date, description)
+            VALUES(?, ?, ?, ?)
+            """;
+    private static final String SELECT_ALL_SQL = """
+            SELECT 
+                id,
+                amount,
+                category_id,
+                date,
+                description
+                FROM finance_storage.transactions
+            """;
+    private static final String SELECT_SUM_PERIOD = """
+            SELECT SUM(t.amount)
+            FROM finance_storage.transactions t
+            JOIN finance_storage.categories c 
+                ON c.id = t.category_id
+            WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = ?)
+                AND t.date BETWEEN ? AND ?
+            GROUP BY c.type_id
+            """;
+    private static final String SELECT_TOP_EXPENSES = """
+            SELECT SUM(t.amount) s,
+                   (SELECT name FROM finance_storage.transaction_name t_n WHERE c.name_id = t_n.id)
+            FROM finance_storage.transactions t
+            JOIN finance_storage.categories c 
+                ON c.id = t.category_id
+            WHERE c.type_id = (SELECT id FROM finance_storage.transaction_type WHERE type = 'Списание')
+                AND t.date BETWEEN ? AND ?
+            GROUP BY c.name_id
+            ORDER BY s DESC
+            LIMIT 5
+            """;
+    private static final String SELECT_MONTH_TOTAL = """
+            SELECT SUM(t.amount) s
+            FROM finance_storage.transactions t
+            WHERE t.date BETWEEN ? AND ?
+            """;
+    private static final String DELETE_SQL = """
+            DELETE FROM finance_storage.transactions
+            WHERE id = ?
+            """;
+
+    private TransactionDao(){
+
+    }
+
+    public static TransactionDao getInstance(){
+        return INSTANCE;
+    }
+
+    public Long addTransaction(Transaction transaction){
+        try(var connection = ConnectionManager.get();
+            var statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)){
+            statement.setDouble(1, transaction.amount());
+            statement.setLong(2, transaction.category_id());
+            statement.setTimestamp(3, Timestamp.from(transaction.date().toInstant(ZoneOffset.ofHours(0))));
+            statement.setString(4, transaction.description());
+            statement.executeUpdate();
+            var generatedKeys = statement.getGeneratedKeys();
+            if(generatedKeys.next()){
+                return generatedKeys.getLong("id");
+            }
+            return -1L;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Transaction> getSumPeriod(ZonedDateTime from, ZonedDateTime to, String type){
+        try(var connection = ConnectionManager.get();
+            var statement = connection.prepareStatement(SELECT_SUM_PERIOD)){
+            List<Transaction> list = new ArrayList<>();
+            var resultSet = statement.executeQuery();
+            statement.setString(1, type);
+            statement.setTimestamp(2, Timestamp.from(from.toInstant()));
+            statement.setTimestamp(3, Timestamp.from(from.toInstant()));
+            while(resultSet.next()){
+                Transaction transaction = new Transaction(resultSet.getLong("id"),
+                        resultSet.getDouble("amount"),
+                        resultSet.getLong("category_id"),
+                        ZonedDateTime.ofInstant(resultSet.getTimestamp("date").toInstant(), ZoneId.of("ECT")).toLocalDateTime(),
+                        resultSet.getString("description"));
+                list.add(transaction);
+            }
+
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Transaction> getTopExpenses(ZonedDateTime from, ZonedDateTime to, String type){
+        try(var connection = ConnectionManager.get();
+            var statement = connection.prepareStatement(SELECT_TOP_EXPENSES)){
+            List<Transaction> list = new ArrayList<>();
+            var resultSet = statement.executeQuery();
+            statement.setTimestamp(1, Timestamp.from(from.toInstant()));
+            statement.setTimestamp(2, Timestamp.from(from.toInstant()));
+            while(resultSet.next()){
+                Transaction transaction = new Transaction(resultSet.getLong("id"),
+                        resultSet.getDouble("amount"),
+                        resultSet.getLong("category_id"),
+                        ZonedDateTime.ofInstant(resultSet.getTimestamp("date").toInstant(), ZoneId.of("ECT")).toLocalDateTime(),
+                        resultSet.getString("description"));
+                list.add(transaction);
+            }
+
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Transaction> getMonthTotal(ZonedDateTime from, ZonedDateTime to, String type){
+        try(var connection = ConnectionManager.get();
+            var statement = connection.prepareStatement(SELECT_MONTH_TOTAL)){
+            List<Transaction> list = new ArrayList<>();
+            var resultSet = statement.executeQuery();
+            statement.setTimestamp(1, Timestamp.from(from.toInstant()));
+            statement.setTimestamp(2, Timestamp.from(from.toInstant()));
+            while(resultSet.next()){
+                Transaction transaction = new Transaction(resultSet.getLong("id"),
+                        resultSet.getDouble("amount"),
+                        resultSet.getLong("category_id"),
+                        ZonedDateTime.ofInstant(resultSet.getTimestamp("date").toInstant(), ZoneId.of("ECT")).toLocalDateTime(),
+                        resultSet.getString("description"));
+                list.add(transaction);
+            }
+
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Transaction> getAllTransactions(){
+        try(var connection = ConnectionManager.get();
+            var statement = connection.prepareStatement(SELECT_ALL_SQL)){
+            List<Transaction> list = new ArrayList<>();
+            var resultSet = statement.executeQuery();
+            while(resultSet.next()){
+                Transaction transaction = new Transaction(resultSet.getLong("id"),
+                        resultSet.getDouble("amount"),
+                        resultSet.getLong("category_id"),
+                        ZonedDateTime.ofInstant(resultSet.getTimestamp("date").toInstant(), ZoneId.of("ECT")).toLocalDateTime(),
+                        resultSet.getString("description"));
+                list.add(transaction);
+            }
+
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean deleteTransaction(Long id){
+        try(var connection = ConnectionManager.get();
+            var statement = connection.prepareStatement(DELETE_SQL, Statement.RETURN_GENERATED_KEYS)){
+            statement.setLong(1, id);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
