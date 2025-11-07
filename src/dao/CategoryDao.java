@@ -123,8 +123,6 @@ public class CategoryDao {
     }
 
     public List<Category> findCategoryByTypeName(String type, String name){
-        System.out.println(type);
-        System.out.println(name);
         try(var connection = ConnectionManager.get();
             var statement = connection.prepareStatement(SELECT_CATEGORY_BY_TYPE_NAME_SQL)){
             statement.setString(1, type);

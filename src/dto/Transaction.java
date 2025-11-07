@@ -7,5 +7,4 @@ public record Transaction(Long id,
                           Long category_id,
                           LocalDateTime date,
                           String description) {
-
 }
